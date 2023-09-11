@@ -9,13 +9,7 @@ import traceback
 import typing
 import uuid
 from types import FunctionType
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Coroutine, TypeVar, Union
 
 import orjson
 import websockets
@@ -24,20 +18,20 @@ from .lib.errors import (
     ClientNotReadyError,
     ClientRuntimeError,
     InvalidRouteType,
-    UnauthorizedError,
     MissingUUIDError,
+    UnauthorizedError,
     UUIDNotFoundError,
 )
 from .lib.events import Events
 from .lib.message import WsMessage
-from .lib.payload import Payloads, MessagePayload, winerpObject, responseObject
+from .lib.payload import MessagePayload, Payloads, responseObject, winerpObject
 
 logger = logging.getLogger(__name__)
-Coro = TypeVar('Coro', bound=Callable[..., Coroutine[Any, Any, Any]])
+Coro = TypeVar("Coro", bound=Callable[..., Coroutine[Any, Any, Any]])
 
 
 class Client:
-    r"""Represents a winerp Client.
+    """Represents a winerp Client.
     This class is used to interact with the Server
 
     Parameters
@@ -50,22 +44,22 @@ class Client:
     port: Optional[:class:`int`]
         The port on which the server is running. Defaults to 13254.
     reconnect: Optional[:class:`bool`]
-        If set to True, the client will automatically try to reconnect to the winerp server
+        If the client should reconnect to the server if the connection is lost.
         every 60 seconds (default). This option is set to True by default.
     """
 
     def __init__(
-            self,
-            local_name: str,
-            host: str = "localhost",
-            port: int = 13254,
-            reconnect: bool = True
+        self,
+        local_name: str,
+        host: str = "localhost",
+        port: int = 13254,
+        reconnect: bool = True,
     ):
         self.uri: str = f"ws://{host}:{port}"
         self.local_name: str = local_name
         self.reconnect: bool = reconnect
         self.reconnect_threshold: int = 60
-        self.max_data_size: float = 2  # MiB
+        self.max_data_size: float = 2  # in MiB
         self.websocket = None
         self.__routes = {}
         self.__sub_routes = {}
@@ -87,7 +81,7 @@ class Client:
     def on_hold(self) -> bool:
         """
         :class:`bool`: Returns True if the client is on hold by the server.
-        A client is put on hold if a client of same local name is already connected to the server.
+        A client is put on hold if another client with the same name is connected.
         """
         return self._on_hold
 
@@ -103,9 +97,7 @@ class Client:
 
     async def __verify_client(self):
         payload = MessagePayload(
-            type=Payloads.verification,
-            id=self.local_name,
-            uuid=str(uuid.uuid4())
+            type=Payloads.verification, id=self.local_name, uuid=str(uuid.uuid4())
         )
         await self.send_message(payload)
         logger.info("Verification request sent")
@@ -117,10 +109,10 @@ class Client:
                 self.uri,
                 close_timeout=0,
                 ping_interval=None,
-                max_size=int(self.max_data_size * 1048576)
+                max_size=int(self.max_data_size * 1048576),
             )
             self._authorized = False
-            self.__events.dispatch_event('winerp_connect')
+            self.__events.dispatch_event("winerp_connect")
             logger.info("Connected to Websocket")
 
     async def __reconnect_client(self) -> bool:
@@ -130,8 +122,12 @@ class Client:
                 await self.__verify_client()
                 return True
             except Exception as error:
-                logger.debug("Failed to reconnect. Retrying in %ss.", self.reconnect_threshold)
-                logger.error("While trying to reconnect there has been an error. %s", str(error))
+                logger.debug(
+                    "Failed to reconnect. Retrying in %ss.", self.reconnect_threshold
+                )
+                logger.error(
+                    "While trying to reconnect there has been an error. %s", str(error)
+                )
                 await asyncio.sleep(self.reconnect_threshold)
 
     async def start(self) -> None:
@@ -143,7 +139,7 @@ class Client:
         -------
             ConnectionError
                 If the websocket is already connected.
-        
+
         Returns
         -------
             :class:`None`
@@ -168,7 +164,9 @@ class Client:
         """
 
         def route_decorator(_route_func):
-            if (name is None and _route_func.__name__ in self.__routes) or (name is not None and name in self.__routes):
+            if (name is None and _route_func.__name__ in self.__routes) or (
+                name is not None and name in self.__routes
+            ):
                 raise ValueError("Route name is already registered!")
 
             if not asyncio.iscoroutinefunction(_route_func):
@@ -207,9 +205,11 @@ class Client:
 
         """
         if (name in self.__routes) or (callback.__name__ in self.__routes):
-            raise KeyError(f"Route name is already registered!\nRoutes: {self.__routes}")
+            raise KeyError(
+                f"Route name is already registered!\nRoutes: {self.__routes}"
+            )
         if not asyncio.iscoroutinefunction(callback):
-            raise InvalidRouteType('Route callback must be an asyncio coro.')
+            raise InvalidRouteType("Route callback must be an asyncio coro.")
 
         self.__routes[name or callback.__name__] = callback
         return callback
@@ -217,7 +217,7 @@ class Client:
     def remove_route(self, name: str):
         """
         Removes a route from the registered routes.
-        
+
         Parameters
         ----------
         name
@@ -245,9 +245,9 @@ class Client:
         self.__sub_routes[winerp_object.uuid] = {}
         for function_name, function_object in winerp_object.functions.items():
             self.__sub_routes[winerp_object.uuid][function_name] = function_object
-        asyncio.create_task(self.__purge_sub_routes(
-            winerp_object.object_expiry, winerp_object.uuid
-        ))
+        asyncio.create_task(
+            self.__purge_sub_routes(winerp_object.object_expiry, winerp_object.uuid)
+        )
 
     async def ping(self, client=None, timeout: int = 60) -> bool:
         """|coro|
@@ -260,32 +260,37 @@ class Client:
                 The client is currently not ready to send or accept requests.
             UnauthorizedError
                 The client isn't authorized by the server.
-        
+
         Returns
         --------
             :class:`bool`
                 If the ping is successful, it returns True.
         """
         if self._on_hold or self.websocket is None or not self.websocket.open:
-            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+            raise ClientNotReadyError(
+                "The client is currently not ready to send or accept requests."
+            )
         if not self._authorized:
             raise UnauthorizedError("Client is not authorized!")
         logger.debug("Pinging IPC Server")
 
         _uuid = str(uuid.uuid4())
         payload = MessagePayload(
-            type=Payloads.ping,
-            id=self.local_name,
-            destination=client,
-            uuid=_uuid
+            type=Payloads.ping, id=self.local_name, destination=client, uuid=_uuid
         )
         await self.send_message(payload)
-        resp = await self.__get_response(_uuid, asyncio.get_event_loop(), timeout=timeout)
+        resp = await self.__get_response(
+            _uuid, asyncio.get_event_loop(), timeout=timeout
+        )
         return resp.get("success", False)
 
-    async def _call_function(self, destination, object_identifier, func_name, *args, **kwargs) -> bool:
+    async def _call_function(
+        self, destination, object_identifier, func_name, *args, **kwargs
+    ) -> bool:
         if self._on_hold or self.websocket is None or not self.websocket.open:
-            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+            raise ClientNotReadyError(
+                "The client is currently not ready to send or accept requests."
+            )
         if not self._authorized:
             raise UnauthorizedError("Client is not authorized!")
         logger.debug("Calling a function IPC Server")
@@ -300,28 +305,21 @@ class Client:
                 "__uuid__": object_identifier,
                 "__func__": func_name,
                 "__args__": list(args),
-                "__kwargs__": dict(kwargs)
-            }
+                "__kwargs__": dict(kwargs),
+            },
         )
         await self.send_message(payload)
         return await self.__get_response(_uuid, asyncio.get_event_loop(), timeout=30)
 
     def __get_response(
-            self,
-            _uuid: str,
-            loop: asyncio.AbstractEventLoop,
-            timeout: int = 60
+        self, _uuid: str, loop: asyncio.AbstractEventLoop, timeout: int = 60
     ):
         future = loop.create_future()
         self.listeners[_uuid] = future
         return asyncio.wait_for(future, timeout)
 
     async def request(
-            self,
-            route: str,
-            source: str,
-            timeout: int = 60,
-            **kwargs
+        self, route: str, source: str, timeout: int = 60, **kwargs
     ) -> Any:
         """|coro|
 
@@ -349,16 +347,20 @@ class Client:
                 If the UUID is not found.
             asyncio.TimeoutError
                 If the response is not received within the timeout.
-        
+
         Returns
         --------
             :class:`Any`
                 The data associated with the message.
         """
         if self.websocket is None or not self.websocket.open:
-            raise ClientNotReadyError("The client has not been started or has disconnected")
+            raise ClientNotReadyError(
+                "The client has not been started or has disconnected"
+            )
         if self._on_hold:
-            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+            raise ClientNotReadyError(
+                "The client is currently not ready to send or accept requests."
+            )
         if not self._authorized:
             raise UnauthorizedError("Client is not authorized!")
 
@@ -374,7 +376,7 @@ class Client:
             destination=source,
             route=route,
             data=kwargs,
-            uuid=_uuid
+            uuid=_uuid,
         )
 
         await self.send_message(payload)
@@ -382,14 +384,10 @@ class Client:
             _uuid, asyncio.get_event_loop(), timeout=timeout
         )
 
-    async def inform(
-            self,
-            data: Any,
-            destinations: list
-    ):
+    async def inform(self, data: Any, destinations: list):
         """|coro|
 
-        Sends data to other connected clients. There is no tracking of the data so there 
+        Sends data to other connected clients. There is no tracking of the data so there
         won't be any error if it doesn't reach its specified destination.
 
         The data is sent to all connected clients if the destinations list is empty.
@@ -407,15 +405,19 @@ class Client:
                 The client is currently not ready to send or accept requests.
             UnauthorizedError
                 The client isn't authorized by the server.
-        
+
         Returns
         --------
             :class:`None`
         """
         if self.websocket is None or not self.websocket.open:
-            raise ClientNotReadyError("The client has not been started or has disconnected")
+            raise ClientNotReadyError(
+                "The client has not been started or has disconnected"
+            )
         if self._on_hold:
-            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+            raise ClientNotReadyError(
+                "The client is currently not ready to send or accept requests."
+            )
         if not self._authorized:
             raise UnauthorizedError("Client is not authorized!")
 
@@ -435,21 +437,21 @@ class Client:
     async def wait_until_ready(self):
         """|coro|
 
-        Waits until the client is ready to send or accept requests.        
+        Waits until the client is ready to send or accept requests.
         """
-        await self.wait_for('winerp_ready', None)
+        await self.wait_for("winerp_ready", None)
 
     async def wait_until_disconnected(self):
         """|coro|
-        
+
         Waits until the client is disconnected.
         """
-        await self.wait_for('winerp_disconnect', None)
+        await self.wait_for("winerp_disconnect", None)
 
     def wait_for(
-            self,
-            event: str,
-            timeout: Union[int, None] = None,
+        self,
+        event: str,
+        timeout: Union[int, None] = None,
     ):
         """|coro|
 
@@ -474,7 +476,7 @@ class Client:
         -------
             asyncio.TimeoutError
                 If the event is not received within the timeout.
-        
+
         Returns
         --------
             :class:`Any`
@@ -499,7 +501,7 @@ class Client:
             try:
                 message = WsMessage(orjson.loads(await self.websocket.recv()))
             except websockets.exceptions.ConnectionClosedError:
-                self.__events.dispatch_event('winerp_disconnect')
+                self.__events.dispatch_event("winerp_disconnect")
                 if (
                     self.reconnect
                     and not await self.__reconnect_client()
@@ -508,7 +510,7 @@ class Client:
                     break
             if message.type.success and not self._authorized:
                 logger.info("Authorized Successfully")
-                self.__events.dispatch_event('winerp_ready')
+                self.__events.dispatch_event("winerp_ready")
                 self._authorized = True
                 self._on_hold = False
 
@@ -525,35 +527,40 @@ class Client:
                         data="Route not found",
                         traceback="Route not found",
                         destination=message.id,
-                        uuid=message.uuid
+                        uuid=message.uuid,
                     )
                     self.__send_message(payload)
                     return
                 logger.info("Fulfilling request @ route: %s", message.route)
                 asyncio.create_task(self._fulfill_request(message))
-                self.__events.dispatch_event('winerp_request')
+                self.__events.dispatch_event("winerp_request")
 
             elif message.type.response:
                 logger.info("Received a response from server @ uuid: %s", message.uuid)
                 asyncio.create_task(self._dispatch(message))
-                self.__events.dispatch_event('winerp_response')
+                self.__events.dispatch_event("winerp_response")
 
             elif message.type.error:
                 if message.data == "Already authorized.":
                     self._on_hold = True
                     logger.warning(
-                        "Another client is already connected. Requests will be enabled when the other is disconnected.")
+                        "Another client is already connected. Requests will be enabled when the other is disconnected."
+                    )
                 else:
                     logger.debug("Failed to fulfill request: %s", message.data)
-                    self.__events.dispatch_event('winerp_error', message.data)
+                    self.__events.dispatch_event("winerp_error", message.data)
 
                 if message.uuid is not None:
                     asyncio.create_task(self._dispatch(message))
 
             elif message.type.information:
                 if message.data:
-                    logger.debug("Received an information bit from client: %s", message.id)
-                    self.__events.dispatch_event('winerp_information', message.data, message.id)
+                    logger.debug(
+                        "Received an information bit from client: %s", message.id
+                    )
+                    self.__events.dispatch_event(
+                        "winerp_information", message.data, message.id
+                    )
 
             elif message.type.function_call:
                 logger.debug("Received an object function call.")
@@ -562,16 +569,18 @@ class Client:
                     type=Payloads.response,
                     id=self.local_name,
                     destination=message.id,
-                    uuid=message.uuid
+                    uuid=message.uuid,
                 )
                 try:
-                    called_function = self.__sub_routes[message.data["__uuid__"]][message.data["__func__"]]
+                    called_function = self.__sub_routes[message.data["__uuid__"]][
+                        message.data["__func__"]
+                    ]
                     asyncio.create_task(
                         self._fulfil_callback(
                             payload,
                             called_function,
                             *message.data["__args__"],
-                            **message.data["__kwargs__"]
+                            **message.data["__kwargs__"],
                         )
                     )
                 except KeyError:
@@ -581,7 +590,7 @@ class Client:
                         data="The called function has either expired or has never been registered",
                         traceback="The called function has either expired or has never been registered",
                         destination=message.id,
-                        uuid=message.uuid
+                        uuid=message.uuid,
                     )
                     self.__send_message(payload)
 
@@ -594,7 +603,9 @@ class Client:
     async def _fulfil_callback(self, payload, function, *args, **kwargs):
         try:
             payload.data = await function(*args, **kwargs)
-            if not isinstance(payload.data, (int, float, str, bool, type(None), list, tuple, dict)):
+            if not isinstance(
+                payload.data, (int, float, str, bool, type(None), list, tuple, dict)
+            ):
                 payload.data = winerpObject(payload.data)
 
             if isinstance(payload.data, winerpObject):
@@ -603,13 +614,11 @@ class Client:
             self.__send_message(payload)
         except Exception as error:
             logger.exception("Failed to run the registered method")
-            self.__events.dispatch_event('winerp_error', error)
+            self.__events.dispatch_event("winerp_error", error)
             payload.type = Payloads.error
             payload.data = str(error)
-            payload.traceback = ''.join(
-                traceback.format_exception(
-                    TypeError, error, error.__traceback__
-                )
+            payload.traceback = "".join(
+                traceback.format_exception(TypeError, error, error.__traceback__)
             )
 
     async def _fulfill_request(self, message: WsMessage):
@@ -626,11 +635,11 @@ class Client:
                 self.__parse_object(payload)
         except Exception as error:
             logger.exception(error)
-            self.__events.dispatch_event('winerp_error', error)
+            self.__events.dispatch_event("winerp_error", error)
             etype = type(error)
             trace = error.__traceback__
             lines = traceback.format_exception(etype, error, trace)
-            traceback_text = ''.join(lines)
+            traceback_text = "".join(lines)
 
             payload.type = Payloads.error
             payload.data = str(error)
@@ -640,15 +649,11 @@ class Client:
                 await self.send_message(payload)
             except TypeError as error:
                 logger.exception("Failed to convert data to json")
-                self.__events.dispatch_event('winerp_error', error)
+                self.__events.dispatch_event("winerp_error", error)
                 payload.type = Payloads.error
                 payload.data = str(error)
-                payload.traceback = ''.join(
-                    traceback.format_exception(
-                        TypeError,
-                        error,
-                        error.__traceback__
-                    )
+                payload.traceback = "".join(
+                    traceback.format_exception(TypeError, error, error.__traceback__)
                 )
                 self.__send_message(payload)
 
@@ -656,15 +661,13 @@ class Client:
         data = msg.data
         _uuid = msg.uuid
         if _uuid is None:
-            raise MissingUUIDError('UUID is missing.')
+            raise MissingUUIDError("UUID is missing.")
         if _uuid not in self.listeners:
             raise UUIDNotFoundError(f"UUID {_uuid} not found in listeners.")
 
         future: asyncio.Future = self.listeners[_uuid]
         if msg.type.error:
-            future.set_exception(
-                ClientRuntimeError(msg.data)
-            )
+            future.set_exception(ClientRuntimeError(msg.data))
 
         elif msg.pseudo_object:
             future.set_result(responseObject(self, msg.id, data))

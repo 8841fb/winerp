@@ -1,17 +1,17 @@
 from quart import Quart
+
 import winerp
 
 app = Quart(__name__)
 
-ipc_client = winerp.Client(
-    local_name = "client-name",
-    port = 6543
-)
+ipc_client = winerp.Client(local_name="client-name", port=6543)
+
 
 @app.while_serving
 async def func():
     await ipc_client.start()
     yield
+
 
 @app.route("/ping")
 async def ping():

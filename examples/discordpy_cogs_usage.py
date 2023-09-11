@@ -1,9 +1,10 @@
 # This requires you to init the ipc client in your bot
 # in the following manner:
 
-import winerp
 import discord
 from discord.ext import commands
+
+import winerp
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 bot.ipc = winerp.Client(...)
@@ -15,8 +16,9 @@ bot.ipc = winerp.Client(...)
 
 from discord.ext import commands
 
+
 class MyCog(commands.Cog):
-    def __init__(self, bot, ...):
+    def __init__(self, bot, *args, **kwargs):
         self.bot = bot
         ...
 
@@ -26,7 +28,8 @@ class MyCog(commands.Cog):
 
         @bot.ipc_client.route()
         async def cog_route():
-            return 'Hi, I am from a cog!'
+            return "Hi, I am from a cog!"
+
 
 async def setup(bot):
     await bot.add_cog(MyCog(bot))

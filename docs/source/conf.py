@@ -11,23 +11,24 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-import sys, pathlib
+import pathlib
+import sys
 
-#sys.path.insert(0, os.path.abspath(os.path.join(__file__, '../..')))
+# sys.path.insert(0, os.path.abspath(os.path.join(__file__, '../..')))
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 print(sys.path[0])
-#sys.path.insert(0, os.path.abspath('.'))
-sys.path.append(os.path.abspath('extensions'))
+# sys.path.insert(0, os.path.abspath('.'))
+sys.path.append(os.path.abspath("extensions"))
 
 # -- Project information -----------------------------------------------------
 
-project = 'winerp'
-copyright = '2022, BlackThunder, AwesomeSam'
-author = 'BlackThunder, AwesomeSam'
+project = "winerp"
+copyright = "2022, BlackThunder, AwesomeSam"
+author = "BlackThunder, AwesomeSam"
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
-source_suffix = '.rst'
+release = "0.1"
+source_suffix = ".rst"
 
 # -- General configuration ---------------------------------------------------
 
@@ -35,21 +36,21 @@ source_suffix = '.rst'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'builder',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.extlinks',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.napoleon',
-    'sphinxcontrib_trio',
-    'details',
-    'exception_hierarchy',
-    'attributetable',
-    'resourcelinks',
-    'nitpick_file_ignorer',
+    "builder",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinxcontrib_trio",
+    "details",
+    "exception_hierarchy",
+    "attributetable",
+    "resourcelinks",
+    "nitpick_file_ignorer",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -63,7 +64,7 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_experimental_html5_writer = True
-html_theme = 'basic'
+html_theme = "basic"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -71,19 +72,14 @@ html_theme = 'basic'
 html_static_path = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'friendly'
+pygments_style = "friendly"
 
-html_search_scorer = '_static/scorer.js'
+html_search_scorer = "_static/scorer.js"
 
-html_js_files = [
-  'custom.js',
-  'settings.js',
-  'copy.js',
-  'sidebar.js'
-]
+html_js_files = ["custom.js", "settings.js", "copy.js", "sidebar.js"]
 
-autodoc_member_order = 'bysource'
-autodoc_typehints = 'none'
+autodoc_member_order = "bysource"
+autodoc_typehints = "none"
 
 
 rst_prolog = """

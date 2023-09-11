@@ -1,11 +1,11 @@
 from setuptools import setup
 
 extras = {
-    'docs': [
-        'sphinx==4.4.0',
-        'sphinxcontrib_trio==1.1.2',
-        'sphinxcontrib-websupport',
-        'typing-extensions',
+    "docs": [
+        "sphinx==4.4.0",
+        "sphinxcontrib_trio==1.1.2",
+        "sphinxcontrib-websupport",
+        "typing-extensions",
     ],
 }
 
@@ -30,18 +30,17 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Operating System :: OS Independent",
         "Typing :: Typed",
-        
     ],
     packages=["winerp"],
     package_data={
-     'winerp.lib': ['*'],
+        "winerp.lib": ["*"],
     },
     include_package_data=True,
     entry_points={
-        'console_scripts': [
-            'winerp=winerp.__main__:run',
-            ]
-        },
+        "console_scripts": [
+            "winerp=winerp.__main__:run",
+        ]
+    },
     install_requires=["websockets", "websocket-server", "orjson"],
     extra_requires=extras,
     python_requires=">=3.6",

@@ -1,12 +1,7 @@
 import asyncio
 import traceback
 from logging import Logger
-from typing import (
-    Dict,
-    Callable,
-    Coroutine,
-    Any,
-)
+from typing import Any, Callable, Coroutine, Dict
 
 
 class Events:
@@ -28,7 +23,7 @@ class Events:
             "on_winerp_request",
             "on_winerp_response",
             "on_winerp_information",
-            "on_winerp_error"
+            "on_winerp_error",
         ]
         self._logger: Logger = logger
 
@@ -45,27 +40,27 @@ class Events:
         Returns:
 
         """
-        self._logger.debug('Event Dispatch -> %r', name)
+        self._logger.debug("Event Dispatch -> %r", name)
         try:
             for future in self.listeners[name]:
                 future.set_result(None)
-                self._logger.debug('Event %r has been dispatched', name)
+                self._logger.debug("Event %r has been dispatched", name)
         except KeyError:
             ...
 
         try:
-            coro = getattr(self, f'on_{name}')
+            coro = getattr(self, f"on_{name}")
         except AttributeError:
             pass
         else:
-            self._schedule_event(coro, f'on_{name}', *args, **kwargs)
+            self._schedule_event(coro, f"on_{name}", *args, **kwargs)
 
     def _schedule_event(
-            self,
-            coro: Callable[..., Coroutine[Any, Any, Any]],
-            event_name: str,
-            *args: Any,
-            **kwargs: Any,
+        self,
+        coro: Callable[..., Coroutine[Any, Any, Any]],
+        event_name: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> asyncio.Task:
         """
 
@@ -80,18 +75,18 @@ class Events:
         """
         wrapped = self._run_event(coro, event_name, *args, **kwargs)
         # Schedules the task
-        return asyncio.create_task(wrapped, name=f'winerp: {event_name}')
+        return asyncio.create_task(wrapped, name=f"winerp: {event_name}")
 
     async def _run_event(
-            self,
-            coro: Callable[..., Coroutine[Any, Any, Any]],
-            name: str,
-            *args: Any,
-            **kwargs: Any,
+        self,
+        coro: Callable[..., Coroutine[Any, Any, Any]],
+        name: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         try:
             await coro(*args, **kwargs)
-        except Exception:
+        except asyncio.CancelledError:
             # TODO
             traceback.print_exc()
 
@@ -122,5 +117,7 @@ class Events:
             raise TypeError("Event function must be a coro.")
 
         setattr(self, func.__name__, func)
-        self._logger.debug('%s has successfully been registered as an event', func.__name__)
+        self._logger.debug(
+            "%s has successfully been registered as an event", func.__name__
+        )
         return func
