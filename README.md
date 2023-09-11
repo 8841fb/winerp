@@ -32,7 +32,7 @@ pip install -U winerp
 ```
 Main branch (can be unstable/buggy):
 ```py
-pip install git+https://www.github.com/BlackThunder01001/winerp
+pip install git+https://www.github.com/nouman0103/winerp
 ```
 
 ### Working:

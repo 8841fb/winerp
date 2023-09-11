@@ -15,9 +15,9 @@ setup(
     description="Websocket based IPC for discord.py bots",
     long_description="...",
     long_description_content_type="text/markdown",
-    url="https://github.com/BlackThunder01001/winerp",
+    url="https://github.com/nouman0103/winerp",
     project_urls={
-        "Bug Tracker": "https://github.com/BlackThunder01001/winerp/issues",
+        "Bug Tracker": "https://github.com/nouman0103/winerp/issues",
         "Documentation": "https://winerp.readthedocs.io/en/latest/",
     },
     author="BlackThunder",
