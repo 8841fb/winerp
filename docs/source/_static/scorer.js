@@ -45,9 +45,7 @@ Scorer = {
                 return 0;
             }
             beenScored.add(title);
-            let newScore = 100 + queryBeingDone.length - _score;
-            // console.log(`${title}: ${score} -> ${newScore} (${_score})`);
-            return newScore;
+            return 100 + queryBeingDone.length - _score;
         }
         return score;
     },

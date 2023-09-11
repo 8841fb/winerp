@@ -30,7 +30,7 @@ class PayloadTypes:
         self._type = type
     
     def __repr__(self) -> str:
-        return '<PayloadTypes: {}>'.format(self._type)
+        return f'<PayloadTypes: {self._type}>'
     
     @property
     def success(self) -> bool:
@@ -171,7 +171,7 @@ class responseObject:
 
 
 class winerpObject:
-    def __init__(self, object, required_functions = [], object_expiry=30, process_iters = True):
+    def __init__(self, object, required_functions=None, object_expiry=30, process_iters = True):
         """Creates a fake object which can be transferred to another client
         Whenever a fake object is sent to another client, the required functions are registered in the memory until the object expiry timeout.
 
@@ -181,6 +181,8 @@ class winerpObject:
             object_expiry (int, optional): The time after which the object expires. Defaults to 30 seconds.
             process_iters (bool, optional): If set to True (default), all iterables with elements of datatype int, float, str, bool, & NoneType will be sent to the client.
         """
+        if required_functions is None:
+            required_functions = []
         self.object = object
         self.required_functions = required_functions
         self.object_expiry = object_expiry
@@ -197,10 +199,10 @@ class winerpObject:
         for attribute in self.object.__dir__():
             if attribute[0] == "_":
                 continue
-            
+
             try:
                 attribute_value = getattr(self.object, attribute)
-            except:
+            except Exception:
                 continue
             if self.__pythonic_object(attribute_value):
                 self.__serialized[attribute] = attribute_value
@@ -209,23 +211,24 @@ class winerpObject:
                     self.functions[attribute] = attribute_value
                     self.__serialized_functions[attribute] = asyncio.iscoroutinefunction(attribute_value)
             elif isinstance(attribute_value, (list, set, tuple)):
-                if self.process_iters:
-                    if not any(not self.__pythonic_object(__elem) for __elem in attribute_value):
-                        self.__serialized[attribute] = tuple(attribute_value) if isinstance(attribute_value, tuple) else attribute_value
+                if self.process_iters and all(
+                                        self.__pythonic_object(__elem)
+                                        for __elem in attribute_value
+                                    ):
+                    self.__serialized[attribute] = tuple(attribute_value) if isinstance(attribute_value, tuple) else attribute_value
             elif isinstance(attribute_value, dict):
-                if self.process_iters:
-                    if not any(
-                        not self.__pythonic_object(key) or not self.__pythonic_object(value)
-                        for key, value in attribute_value.items()):
-                        self.__serialized[attribute] = attribute_value
+                if self.process_iters and not any(
+                                        not self.__pythonic_object(key) or not self.__pythonic_object(value)
+                                        for key, value in attribute_value.items()):
+                    self.__serialized[attribute] = attribute_value
 
             else:
                 try:
                     if self.__pythonic_object(str(attribute_value.__str__())):
                         self.__serialized[attribute] = str(attribute_value)
-                except:
+                except Exception:
                     ...
-                
+
         return self.__serialized, self.functions
 
     def serialize(self):

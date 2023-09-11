@@ -304,8 +304,7 @@ class Client:
             }
         )
         await self.send_message(payload)
-        recv = await self.__get_response(_uuid, asyncio.get_event_loop(), timeout=30)
-        return recv
+        return await self.__get_response(_uuid, asyncio.get_event_loop(), timeout=30)
 
     def __get_response(
             self,
@@ -356,33 +355,32 @@ class Client:
             :class:`Any`
                 The data associated with the message.
         """
-        if self.websocket is not None and self.websocket.open:
-            if self._on_hold:
-                raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
-            if not self._authorized:
-                raise UnauthorizedError("Client is not authorized!")
-
-            if not route or not source:
-                raise ValueError("Missing required information for this request")
-
-            logger.info("Requesting IPC Server for %r", route)
-
-            _uuid = str(uuid.uuid4())
-            payload = MessagePayload(
-                type=Payloads.request,
-                id=self.local_name,
-                destination=source,
-                route=route,
-                data=kwargs,
-                uuid=_uuid
-            )
-
-            await self.send_message(payload)
-            recv = await self.__get_response(_uuid, asyncio.get_event_loop(), timeout=timeout)
-            return recv
-
-        else:
+        if self.websocket is None or not self.websocket.open:
             raise ClientNotReadyError("The client has not been started or has disconnected")
+        if self._on_hold:
+            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+        if not self._authorized:
+            raise UnauthorizedError("Client is not authorized!")
+
+        if not route or not source:
+            raise ValueError("Missing required information for this request")
+
+        logger.info("Requesting IPC Server for %r", route)
+
+        _uuid = str(uuid.uuid4())
+        payload = MessagePayload(
+            type=Payloads.request,
+            id=self.local_name,
+            destination=source,
+            route=route,
+            data=kwargs,
+            uuid=_uuid
+        )
+
+        await self.send_message(payload)
+        return await self.__get_response(
+            _uuid, asyncio.get_event_loop(), timeout=timeout
+        )
 
     async def inform(
             self,
@@ -414,26 +412,25 @@ class Client:
         --------
             :class:`None`
         """
-        if self.websocket is not None and self.websocket.open:
-            if self._on_hold:
-                raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
-            if not self._authorized:
-                raise UnauthorizedError("Client is not authorized!")
-
-            logger.info("Informing IPC Server to redirect to routes %s", destinations)
-            if not isinstance(destinations, list):
-                destinations = [destinations]
-
-            payload = MessagePayload(
-                type=Payloads.information,
-                id=self.local_name,
-                route=destinations,
-                data=data,
-            )
-
-            await self.send_message(payload)
-        else:
+        if self.websocket is None or not self.websocket.open:
             raise ClientNotReadyError("The client has not been started or has disconnected")
+        if self._on_hold:
+            raise ClientNotReadyError("The client is currently not ready to send or accept requests.")
+        if not self._authorized:
+            raise UnauthorizedError("Client is not authorized!")
+
+        logger.info("Informing IPC Server to redirect to routes %s", destinations)
+        if not isinstance(destinations, list):
+            destinations = [destinations]
+
+        payload = MessagePayload(
+            type=Payloads.information,
+            id=self.local_name,
+            route=destinations,
+            data=data,
+        )
+
+        await self.send_message(payload)
 
     async def wait_until_ready(self):
         """|coro|
@@ -503,12 +500,12 @@ class Client:
                 message = WsMessage(orjson.loads(await self.websocket.recv()))
             except websockets.exceptions.ConnectionClosedError:
                 self.__events.dispatch_event('winerp_disconnect')
-                if self.reconnect:
-                    if not await self.__reconnect_client():
-                        break
-                else:
+                if (
+                    self.reconnect
+                    and not await self.__reconnect_client()
+                    or not self.reconnect
+                ):
                     break
-
             if message.type.success and not self._authorized:
                 logger.info("Authorized Successfully")
                 self.__events.dispatch_event('winerp_ready')
@@ -664,12 +661,12 @@ class Client:
             raise UUIDNotFoundError(f"UUID {_uuid} not found in listeners.")
 
         future: asyncio.Future = self.listeners[_uuid]
-        if not msg.type.error:
-            if msg.pseudo_object:
-                future.set_result(responseObject(self, msg.id, data))
-            else:
-                future.set_result(data)
-        else:
+        if msg.type.error:
             future.set_exception(
                 ClientRuntimeError(msg.data)
             )
+
+        elif msg.pseudo_object:
+            future.set_result(responseObject(self, msg.id, data))
+        else:
+            future.set_result(data)

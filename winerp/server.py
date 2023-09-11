@@ -56,16 +56,18 @@ class Server:
         return len(self.active_clients)
 
     def __on_client_connect(self, client, _):
-        logger.info("Client connected with id %s" % client['address'][1])
+        logger.info(f"Client connected with id {client['address'][1]}")
         self.pending_verification[client["address"][1]] = client
 
     def __on_client_disconnect(self, client, _):
-        logger.info("Client disconnected with id %s" % client['address'][1])
+        logger.info(f"Client disconnected with id {client['address'][1]}")
         for cid, each_client in self.active_clients.items():
             if each_client["id"] == client["address"][1]:
                 del self.active_clients[cid]
                 if cid in self.on_hold_connections:
-                    logger.info("On Hold Client moved to active client with connection id %s and local id %s" % (self.on_hold_connections[cid]['id'], cid))
+                    logger.info(
+                        f"On Hold Client moved to active client with connection id {self.on_hold_connections[cid]['id']} and local id {cid}"
+                    )
                     self.active_clients[cid] = self.on_hold_connections[cid]
                     self.__send_message(
                         self.on_hold_connections[cid]["client"],
@@ -105,32 +107,37 @@ class Server:
         payload = MessagePayload().from_message(msg)
         if msg.type.verification:
             if msg.id in self.active_clients:
-                logger.info("Connection from duplicate client has benn put on hold connection id %s and local id %s" % (client['address'][1], msg.id))
-                payload.uuid = None
+                logger.info(
+                    f"Connection from duplicate client has benn put on hold connection id {client['address'][1]} and local id {msg.id}"
+                )
                 payload.type = Payloads.error
                 payload.data = "Already authorized."
                 payload.traceback = "Already authorized."
+                payload.uuid = None
                 self.__send_error(client, payload)
                 self.on_hold_connections[msg.id] = {"client": client, "id": client["address"][1]}
 
             elif client["address"][1] in self.pending_verification:
-                logger.info("Client verified with connection id %s and local id %s" % (client['address'][1], msg.id))
+                logger.info(
+                    f"Client verified with connection id {client['address'][1]} and local id {msg.id}"
+                )
                 self.active_clients[msg.id] = {"client": client, "id": client["address"][1]}
                 del self.pending_verification[client["address"][1]]
                 payload.type = Payloads.success
                 payload.data = "Authorized."
                 self.__send_message(client, payload)
-        else:
-            if client["address"][1] in self.pending_verification:
-                logger.info('Unverified client tried to send message')
-                payload.type = Payloads.error
-                payload.data = "Not authorized."
-                payload.traceback = "Not authorized."
-                self.__send_error(client, payload)
-                return
+        elif client["address"][1] in self.pending_verification:
+            logger.info('Unverified client tried to send message')
+            payload.type = Payloads.error
+            payload.data = "Not authorized."
+            payload.traceback = "Not authorized."
+            self.__send_error(client, payload)
+            return
 
         if msg.type.information:
-            logger.debug("Received Information Message from client %s" % client['address'][1])
+            logger.debug(
+                f"Received Information Message from client {client['address'][1]}"
+            )
             payload.type = Payloads.information
             if msg.route:
                 for destination in msg.route:
@@ -144,7 +151,7 @@ class Server:
                         self.__send_message(client_obj["client"], payload)
 
         if msg.type.ping:
-            logger.debug("Received Ping Message from client %s" % client['address'][1])
+            logger.debug(f"Received Ping Message from client {client['address'][1]}")
             payload.type = Payloads.ping
             if (msg.destination is not None and msg.destination in self.active_clients) or msg.destination is None:
                 payload.data = {"success": True}
@@ -157,7 +164,7 @@ class Server:
             )
 
         if msg.type.request:
-            logger.debug("Received Request Message from client %s" % client['address'][1])
+            logger.debug(f"Received Request Message from client {client['address'][1]}")
             if msg.id == msg.destination:
                 payload.type = Payloads.error
                 payload.data = "Source and destination are the same."
@@ -178,10 +185,12 @@ class Server:
                     self.active_clients[msg.destination]["client"],
                     payload
                 )
-                logger.debug("Request Message Forwarded to %s" % self.active_clients[msg.destination]["client"]['address'][1])
+                logger.debug(
+                    f"""Request Message Forwarded to {self.active_clients[msg.destination]["client"]['address'][1]}"""
+                )
 
         if msg.type.response or msg.type.error or msg.type.function_call:
-            logger.debug("Received Response Message from client %s" % client['address'][1])
+            logger.debug(f"Received Response Message from client {client['address'][1]}")
             if msg.destination not in self.active_clients:
                 payload.type = Payloads.error
                 payload.data = "The data requester is no longer connected"
@@ -195,7 +204,9 @@ class Server:
                 self.active_clients[msg.destination]["client"],
                 payload
             )
-            logger.debug("Response forwarded to %s" % self.active_clients[msg.destination]["client"]['address'][1])
+            logger.debug(
+                f"""Response forwarded to {self.active_clients[msg.destination]["client"]['address'][1]}"""
+            )
 
     def start(self):
         """

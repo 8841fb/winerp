@@ -100,18 +100,16 @@ class Sidebar {
 function getCurrentSection() {
   let currentSection;
   if (window.scrollY + window.innerHeight > bottomHeightThreshold) {
-    currentSection = sections[sections.length - 1];
-  }
-  else {
-    if (sections) {
-      sections.forEach(section => {
-        let rect = section.getBoundingClientRect();
-        if (rect.top + document.body.offsetTop < 1) {
-          currentSection = section;
-        }
-      });
+      currentSection = sections[sections.length - 1];
     }
-  }
+  else if (sections) {
+        sections.forEach(section => {
+          let rect = section.getBoundingClientRect();
+          if (rect.top + document.body.offsetTop < 1) {
+            currentSection = section;
+          }
+        });
+      }
   return currentSection;
 }
 

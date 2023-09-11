@@ -103,9 +103,7 @@ class PyAttributeTable(SphinxDirective):
         if path:
             modulename = path.rstrip('.')
         else:
-            modulename = self.env.temp_data.get('autodoc:module')
-            if not modulename:
-                modulename = self.env.ref_context.get('py:module')
+            modulename = self.env.temp_data.get('autodoc:module') or self.env.ref_context.get('py:module')
         if modulename is None:
             raise RuntimeError(f'modulename somehow None for {content} in {self.env.docname}.')
 
